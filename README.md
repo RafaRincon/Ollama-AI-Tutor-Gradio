@@ -9,7 +9,26 @@ The goal is **parity dev→prod**: same containers and env vars locally and on a
 
 ---
 
-## Architecture
+## Architecture & Features
+
+```
+[Browser] ⇄ http://localhost:7860  →  [app (Gradio)]  ⇄  http://ollama:11434  →  [ollama]
+                                              ▲
+                                OLLAMA_BASE_URL=http://ollama:11434
+```
+
+* Internal service‑to‑service traffic uses the Docker network hostname `ollama` (not `localhost`).
+* Models are stored under `/models` in the `ollama` container. In Windows dev, we mount your local folder; in servers, use a Docker volume.
+
+### What you can do in the UI
+
+* **Choose explanation depth**: the slider selects an *Explanation Level* (1 = very simple, 5 = technical). The app injects a system prompt to tailor the response to that level.
+* **Ask any question**: type in the textbox and press **Submit**.
+* **Streaming answers**: the assistant streams tokens live while generating.
+* **Conversation history**: messages appear in the *Assistant* panel; the session keeps the current conversation while the page is open.
+* **Clear chat**: use **Clear** to reset the conversation state.
+
+> Note: by default the history is kept only in the browser session (no database). Restarting the container clears server memory.
 
 ```
 [Browser] ⇄ http://localhost:7860  →  [app (Gradio)]  ⇄  http://ollama:11434  →  [ollama]
@@ -96,6 +115,10 @@ Once both services indicate they are running, open:
 http://localhost:7860/
 ```
 
+You should see the AI Tutor interface with controls on the left (explanation level slider, input box, submit/clear buttons) and the **Assistant** answer area on the right, similar to this screenshot:
+
+![AI Tutor UI](docs/ai-tutor-app.png)
+
 ---
 
 ## Linux/server variant (use a Docker **volume** for models)
@@ -123,32 +146,6 @@ docker exec -it ollama ollama list
 # Start the app
 docker compose up -d app
 ```
-
----
-
-## Common commands
-
-```bash
-# Start/stop
-docker compose up -d            # start
-docker compose stop             # stop
-
-docker compose up -d app        # start only app
-docker compose up -d ollama     # start only ollama
-
-# Logs
-docker logs -f gradio-app
-docker logs -f ollama
-
-# Shell access
-docker exec -it gradio-app sh
-docker exec -it ollama sh
-
-# Health / ports
-docker compose ps
-docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
-```
-
 ---
 
 ## Health checks
@@ -159,17 +156,13 @@ docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
 
 ---
 
-## How the app calls Ollama
+## Troubleshooting
 
-`ai_gradio_streaming_ollama.py` reads the base URL from the environment and streams chunks:
-
-```python
-import os
-BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
-url = f"{BASE_URL}/api/chat"
-```
-
-When running inside Docker, `OLLAMA_BASE_URL` is set to `http://ollama:11434`, so the app reaches the `ollama` service over the Docker network.
+* **App can’t reach Ollama**: ensure `OLLAMA_BASE_URL=http://ollama:11434` in the **app** service env.
+* **Port 11434 already in use**: close the Ollama desktop app or kill the process on that port.
+* **Model not found**: run `docker exec -it ollama ollama pull llama3.1`.
+* **Bind mount on Windows**: keep quotes around paths with spaces, e.g. `"C:/Users/Your Name/.ollama/models:/models"`.
+* **Healthcheck failing for app**: minimal images might not include `wget`. Use a Python or curl-based probe (already configured).
 
 ---
 
