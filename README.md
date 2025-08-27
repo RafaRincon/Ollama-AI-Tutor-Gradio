@@ -30,15 +30,6 @@ The goal is **parity dev→prod**: same containers and env vars locally and on a
 
 > Note: by default the history is kept only in the browser session (no database). Restarting the container clears server memory.
 
-```
-[Browser] ⇄ http://localhost:7860  →  [app (Gradio)]  ⇄  http://ollama:11434  →  [ollama]
-                                              ▲
-                                OLLAMA_BASE_URL=http://ollama:11434
-```
-
-* Internal service‑to‑service traffic uses the Docker network hostname `ollama` (not `localhost`).
-* Models are stored under `/models` in the `ollama` container. In Windows dev, we mount your local folder; in servers, use a Docker volume.
-
 ---
 
 ## Prerequisites
